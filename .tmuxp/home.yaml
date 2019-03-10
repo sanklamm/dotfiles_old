@@ -1,0 +1,37 @@
+session_name: home
+windows:
+- focus: 'true'
+  layout: 8bac,211x59,0,0{133x59,0,0,0,77x59,134,0[77x43,134,0,1,77x15,134,44,2]}
+  options:
+    automatic-rename: 'off'
+  panes:
+  - focus: 'true'
+    shell_command: calcurse
+  - shell_command: vim todo.md
+  - shell_command: emacs -nw
+  start_directory: /home/sean
+  window_name: main
+- layout: d160,211x59,0,0,3
+  options:
+    automatic-rename: 'off'
+  panes:
+  - focus: 'true'
+    shell_command: ssh root@51.15.37.204
+  start_directory: /home/sean
+  window_name: scale
+- layout: d161,211x59,0,0,4
+  options:
+    automatic-rename: 'off'
+  panes:
+  - focus: 'true'
+    shell_command: zsh
+  start_directory: /home/sean
+  window_name: '~'
+- layout: d163,211x59,0,0,6
+  options:
+    automatic-rename: 'off'
+  panes:
+  - focus: 'true'
+    shell_command: ssh sean@www03.dev.intern.vcat.de
+  start_directory: /home/sean
+  window_name: 'dev03'

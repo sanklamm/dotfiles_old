@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#
+# Bootstraps user environment and software toolchain
+#
+
+source bootstrap.conf
+
+function is_excluded?() {
+  for f in ${d_excl_files}; do
+    [[ ${f} == *${files}* ]] && return 1
+  done
+  return
+}
+
+function is_os?() {
+  case $(uname) in
+  *Linux*)  printf "linux"   ;;
+  *Darwin*) printf "macosx"  ;;
+  *SunOS*)  printf "solaris" ;;
+  *BSD*)    printf "bsd"     ;;
+  esac
+  return
+}
+
+function is_distro?() {
+  case $(< /etc/*release*) in
+  *Debian* | *Ubuntu*)
+    printf "debian"
+  ;;
+  *"Red Hat"* | *CentOS*)
+    printf "rh"
+  ;;
+  esac
+  return
+}
+
+function install_pkgs() {
+  case $(uname) in
+  *Linux*)
+    $(which apt-get &>/dev/null) || {
+      echo "not debian based, do this manually."
+      exit 1
+    }
+    sudo apt-get install -y ${d_pkg_debian}
+  ;;
+  *Darwin*)
+    echo "HOMEBREW ALL THE THINGS!"
+    exit 1
+  ;;
+  esac
+}
+
+install_pkgs
+# add python pips / ruby gems
+
+# install i3-gaps
+# clone the repository
+git clone https://www.github.com/Airblader/i3 i3-gaps
+cd i3-gaps
+
+# compile & install
+autoreconf --force --install
+rm -rf build/
+mkdir -p build && cd build/
+
+# Disabling sanitizers is important for release versions!
+# The prefix and sysconfdir are, obviously, dependent on the distribution.
+../configure --prefix=/usr --sysconfdir=/etc --disable-sanitizers
+make
+sudo make install
+
+#install neovim
+sudo pip3 install neovim
+
+# git submodule update
+# git submodule foreach git pull
+
+# TODO: link all the things

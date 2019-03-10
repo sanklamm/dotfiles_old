@@ -1,0 +1,295 @@
+# load useful zsh modules
+autoload -U zfinit
+zfinit
+zmodload zsh/zftp zsh/net/tcp zsh/net/socket zsh/mathfunc zsh/zpty
+
+# autoload builtin functions
+## cli prediction
+autoload predict-on predict-off
+function predict-toggle() {
+  # via https://unix.stackexchange.com/questions/56281/command-line-prediction
+  # good idea actually to use this toggle function, can be
+  # used in other places as well to toggle application specific
+  ((predict_on=1-predict_on)) && predict-on || predict-off
+}
+zle -N predict-toggle
+zstyle ':predict' toggle true
+zstyle ':predict' verbose true
+
+## periodic execution
+PERIOD=120; periodic() {
+  echo ${HOST} $(uptime)
+}
+autoload periodic
+
+# userland-agnostic OS and distro detection.
+# comes in handy sometimes e.g. with minimal
+# installations there's no `lsb_release` etc..
+function detect_os() {
+  case $(uname) in
+  *Linux*)  printf "linux"   ;;
+  *Darwin*) printf "macosx"  ;;
+  *SunOS*)  printf "solaris" ;;
+  *BSD*)    printf "bsd"     ;;
+  esac
+  return
+}
+
+function detect_distro() {
+  [[ $(detect_os) == "macosx" ]] && return
+  case $(cat /etc/*release*) in
+  *Debian* | *Ubuntu*)
+    printf "debian"
+  ;;
+  *"Red Hat"* | *CentOS*)
+    printf "rh"
+  ;;
+  esac
+  return
+}
+
+# globals relating to dotfiles
+export __dot_operating_system="$(detect_os)"
+export __dot_os_distribution="$(detect_distro)"
+export __dot_foreign_path="${HOME}/dotfiles/foreign"
+
+# direct command line support for vi/vim
+## vi line editing mode
+bindkey -v
+export KEYTIMEOUT=1
+
+## remap important key-bindings
+bindkey '^L' clear-screen
+bindkey '^A' beginning-of-line
+bindkey '^E' end-of-line
+bindkey '^B' forward-word
+bindkey '^D' backward-word
+bindkey '^P' up-line-or-history
+bindkey '^N' down-line-or-history
+bindkey '^h' backward-delete-char
+bindkey '^w' backward-kill-word
+bindkey '^r' history-incremental-search-backward
+bindkey '^O' copy-prev-shell-word
+bindkey '^X' predict-toggle
+bindkey '^[OM' send-break
+
+## esc+e edits current line in `vim(1)`
+bindkey -M vicmd e edit-command-line
+
+## subtle command lin `vim(1)` indication
+function zle-keymap-select {
+  RPS1="%K{red}%F{black} :: %f%F{blue}vi-mode%f%F{black} :: %f%k"
+  zle reset-prompt
+}
+zle -N zle-line-init
+zle -N zle-keymap-select
+
+# shell history settings
+HISTSIZE=10000
+SAVEHIST=10000
+
+# (non-default) shell options
+setopt append_history extended_history hist_allow_clobber             \
+       inc_append_history share_history hist_expire_dups_first        \
+       hist_lex_words hist_verify hist_ignore_dups hist_ignore_space
+
+# create a local temp. dir
+[[ -d ${HOME}/.tmp ]] || mkdir -p "${HOME}/.tmp"
+
+# PATHs and general global variables
+## sbin
+export PATH=${PATH}:/usr/sbin
+
+## Go
+export GOPATH=${HOME}/go
+export GOROOT=${HOME}/go # some projects use `GOPATH`
+export PATH=${PATH}:${GOPATH}/bin
+
+## packer
+export PATH=${PATH}:${HOME}/packer
+
+## PATH addition for *BSD /usr/local and Homebrew (OSX)
+[[ ${__dot_operating_system} == "macosx" || \
+   ${__dot_operating_system} == "bsd" ]] && {
+  export PATH=${PATH}:/usr/local/bin
+  export PATH=${PATH}:/usr/local/sbin
+}
+
+## intel parallel xe suite (intel compiler etc.)
+[[ -d /opt/intel/bin/ ]] && export PATH=$PATH:/opt/intel/bin
+
+## intel vtune
+[[ -d /opt/intel/vtune_amplifier_xe/bin64 ]] && export PATH=$PATH:/opt/intel/vtune_amplifier_xe/bin64
+
+## Temporary files in $HOME/.tmp
+export TMPDIR=$HOME/.tmp
+
+## debian specific
+export DEBEMAIL=azet@azet.org
+export DEBFULLNAME="Aaron Zauner"
+
+# aliases
+## scripted aliases
+#> each alias is a Lua file in the `aliases/` directory
+#> they are aliased to their filename, excluding suffix
+#> these are actual scripts/programs that may contain
+#> any level of sophistication. LuaJIT is used even
+#> when not necessary to keep consistency.
+for file (${HOME}/dotfiles/aliases/*); do
+  name=$(basename ${file:r})
+  alias ${name}=${file}
+done
+
+## navigation
+alias ll='ls -larthik'
+alias l=ll
+alias la=ll
+alias lsgrep=lgrep
+alias lgrep="ls | grep -i"
+
+## line tools
+alias v='less'
+alias h='http'
+alias e='echo'
+alias p=e
+alias peco='peco --prompt "peco >" -b 9999'
+
+## history
+alias history='history -i -50'
+
+## buitins, coreutils, system tools
+alias f='file'
+alias s='find -type f | peco'
+alias shares='/media/mount'
+alias top='htop || top'
+alias systop='glances'
+alias load='sar 1 3'
+[[ ${__dot_operating_system} == "linux" ]] && {
+  alias net='getent networks; echo; ip netconf; \
+             echo; ip neigh; echo; ip route; echo; ip a'
+}
+alias id='id; echo; getent passwd ${UID}'
+alias mtr='sudo mtr -o "LV G SRD NBWA IJMX" --curses --displaymode 2'
+alias checkroute='mtr 8.8.8.8 -tezi "0.5" -s "-1" -Q1 --ipinfo 1'
+alias testroute=checkroute
+
+## Debian
+### packaging
+alias dquilt='QUILT_PATCHES=debian/patches quilt'
+
+### apt
+alias agi='sudo apt-get install -y'
+alias agr='sudo apt-get remove -y'
+alias agu='sudo apt-get update'
+alias aguu='sudo apt-get upgrade'
+
+## gpg
+alias keysearch=searchkey
+alias searchkey='gpg --search-keys'
+alias sign='gpg --clearsign'
+alias keyshow=showkey
+function showkey() {
+  [[ -z "${1}" ]] && return 1
+  gpg --export --armor "${1}"
+  gpg -k --fingerprint "${1}"
+}
+
+## git
+### git: shorthands for repositories
+alias checkout='git checkout'
+alias push='gp'
+alias pull='git pull'
+alias amend='git commit -a --amend'
+
+### git: shortcuts for the super-lazy
+alias gp='git push'
+alias gc='git clone'
+alias gpt='git push --tags'
+alias gpa='git push --all'
+alias gpf='git push --force'
+alias glp='git log --pretty=oneline'
+
+### git: adv. log display, grep/search and filtering
+alias glpd='git log --graph --all --decorate --name-status'
+alias glpp='git log --graph --abbrev-commit --decorate --date=relative --format=format:"%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)" --all'
+alias glpf='git log --name-status --pretty --graph --abbrev-commit --decorate --date=relative --format=format:"%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)" --all'
+alias glpg='git log --name-status --pretty --graph --decorate --date=relative --format=format:"%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)" --all -i --grep'
+alias glps=glpg
+alias gl-filter='git log --graph --abbrev-commit --decorate --date=relative --format=format:"%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)" --all --diff-filter'
+
+### git: diff beauty
+alias merge-diff='git diff --name-only --diff-filter=U'
+alias hist-diff='git diff --histogram --numstat'
+
+## github
+alias hub='${__dot_foreign_path}/hub/hub'
+alias github=hub
+function github_page() {
+  [[ -d ".git/" && $(grep 'github' .git/config) ]] || return 1
+  hub browse &>/dev/null
+}
+alias web='eval github_page'
+alias browse=web
+
+## gist
+alias gist='gist-paste'
+
+## pdf
+alias pdf='evince'
+
+## chrome
+alias chrome='google-chrome'
+
+## sublime text
+alias sublime=' ~/sublime/sublime_text &'
+alias sublimetext=sublime
+
+## kexec
+alias kreboot='sudo ${__dot_foreign_path}/kexec-reboot/kexec-reboot -vi'
+
+## screenshot
+alias screenshot='import ~/Desktop/scr-$(date --rfc-3339=date)_${RANDOM}.png'
+
+## 'less' with syntax highlighting
+function less_highlight() {
+  case ${@} in
+  *.html|*.css|*.tex|*.c|*.cpp|*.py|*.rb|*.php|*.lua|*.sh|*.bash|*.zsh|\
+  *.rs|*.ocaml|*.md|*.swift|*.go|*.asm|*.h|*.hpp|*.r|*.m|*.rst|*.pl)
+    LESS=" -RN" LESSOPEN="| highlight %s --out-format xterm256 --quiet \
+      --force --style solarized-dark " less ${@}
+  ;;
+  *) less ${@} ;;
+  esac
+};
+alias less='eval less_highlight'
+alias more=less
+
+## 'open' shortcut
+[[ ${__dot_operating_system} == "macosx" ]] || function open() {
+  case ${1} in
+  *.html)     chrome ${1}       ;;
+  *.pdf)      pdf ${1}          ;;
+  *.png  |\
+  *.jpg  |\
+  *.jpeg |\
+  *.gif)      ristretto ${1} &  ;;
+  *)
+    [[ $(file -bi ${1}) == *binary* ]] || vim ${1}
+  ;;
+  esac
+}
+
+# special community maintained zsh features
+## history substring search and syntax highlighting
+[[ -f "${__dot_foreign_path}/zsh-history-substring-search/zsh-history-substring-search.zsh" ]] && \
+	source "${__dot_foreign_path}/zsh-history-substring-search/zsh-history-substring-search.zsh"
+[[ -f "${__dot_foreign_path}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]] && \
+	source "${__dot_foreign_path}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+
+# external cli command completion support
+## Google Compute Engine
+[[ -d ${HOME}/google-cloud-sdk ]] && {
+  source "${HOME}/google-cloud-sdk/path.zsh.inc"
+  source "${HOME}/google-cloud-sdk/completion.zsh.inc"
+}
+

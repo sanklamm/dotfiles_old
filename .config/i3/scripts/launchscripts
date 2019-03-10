@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+# a simple dmenu launch script 
+#
+###
+
+DMENU='dmenu -i -fn -xos4-terminus-medium-r-*--12-*-*-*-*-*-iso10646-1'
+choice=$(echo -e "mount_fileserver\nunmount_fileserver\nmount_www03\nunmount_www03\nssh_www03" | $DMENU)
+
+case "$choice" in
+  mount_fileserver) sudo mount -t cifs //file.intern.vcat.de/VCAT/ /home/sean/VCAT/p/ -o iocharset=utf8,rw,credentials=/etc/cifspasswd,uid=1000,gid=1000,noperm ;;
+  unmount_fileserver) sudo umount -l /home/sean/VCAT/p ;;
+  mount_www03) sshfs sean@www03.dev.intern.vcat.de:dev /home/sean/VCAT/dev03 ;;
+  unmount_www03) sudo umount -l /home/sean/VCAT/dev03 ;;
+  ssh_www03) exec gnome-terminal -t "ssh www03" -x $SHELL -ic "ssh sean@www03.dev.intern.vcat.de" ;;
+esac
