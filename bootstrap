@@ -55,25 +55,25 @@ install_pkgs
 
 # install i3-gaps
 # clone the repository
-git clone https://www.github.com/Airblader/i3 i3-gaps
-cd i3-gaps
+# git clone https://www.github.com/Airblader/i3 i3-gaps
+# cd i3-gaps
 
 # compile & install
-autoreconf --force --install
-rm -rf build/
-mkdir -p build && cd build/
+# autoreconf --force --install
+# rm -rf build/
+# mkdir -p build && cd build/
 
 # Disabling sanitizers is important for release versions!
 # The prefix and sysconfdir are, obviously, dependent on the distribution.
-../configure --prefix=/usr --sysconfdir=/etc --disable-sanitizers
-make
-sudo make install
+# ../configure --prefix=/usr --sysconfdir=/etc --disable-sanitizers
+# make
+# sudo make install
 
 #install neovim
-sudo pip3 install neovim
+# sudo pip3 install neovim
 
 # install oh-my-zsh
-sh -c "$(wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh -O -)"
+# sh -c "$(wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh -O -)"
 
 
 # git submodule update

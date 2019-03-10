@@ -10,6 +10,8 @@ tools may require a current 3.x-line Linux kernel.
 ## Bootstrapping and configuration
 1. `su`
 2. `apt-get install sudo git`
+3. `cd ~` `su` `visudo` then add `username ALL=(ALL) ALL` to `sudoers`
+4. `sudo adduser <username> sudo`
 2. clone in `$HOME`.
 3. `./bootstrap [--desktop] [--debug]`.
 
