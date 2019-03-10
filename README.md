@@ -8,10 +8,10 @@ and machine-type (take a look at `bootstrap.conf`). you might want to add
 or remove some packages. Linux-specific performance analysis and debugging
 tools may require a current 3.x-line Linux kernel.
 ## Bootstrapping and configuration
-1. `su && apt-get install sudo git`
+1. `su`
+2. `apt-get install sudo git`
 2. clone in `$HOME`.
 3. `./bootstrap [--desktop] [--debug]`.
-4. **optional**: configure `~/.mutt/accounts/*`, `~/.goobookrc`.
 
 ## TODO
 * write coherent setup routine in `bootstrap`
